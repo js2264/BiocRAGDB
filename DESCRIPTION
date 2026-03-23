@@ -1,0 +1,41 @@
+Package: BiocAgentRAGDB
+Title: RAG Knowledge Base for BiocAgent from Bioconductor Package Sources
+Version: 0.99.0
+Authors@R: c(
+    person("Jacques Serizay", ,
+        email = "jacquesserizay@gmail.com",
+        role = c("aut", "cre"))
+    )
+Description: Provides a pre-built retrieval-augmented generation (RAG)
+    database derived from the source code, vignettes, and metadata of all
+    Bioconductor packages. The database is hosted on ExperimentHub and
+    cached locally via BiocFileCache. It is designed to be used by the
+    'BiocAgent' package to ground LLM responses in real Bioconductor
+    documentation. Includes utilities to fetch, update, and manage the local
+    copy of the RAG database.
+License: Artistic-2.0
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends:
+    R (>= 4.4)
+Imports:
+    ExperimentHub,
+    BiocFileCache,
+    tools,
+    utils
+Suggests:
+    ragnar,
+    ellmer (>= 0.3.0),
+    BiocAgent,
+    mockery,
+    withr,
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    BiocStyle
+biocViews: ExperimentHub, ExperimentData, ReproducibleResearch
+BugReports: https://github.com/Bioconductor/BiocAgentRAGDB/issues
+URL: https://github.com/Bioconductor/BiocAgentRAGDB
+VignetteBuilder: knitr
+Config/testthat/edition: 3

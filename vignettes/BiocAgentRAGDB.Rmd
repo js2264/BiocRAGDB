@@ -1,0 +1,111 @@
+---
+title: "BiocAgentRAGDB: RAG Knowledge Base for BiocAgent"
+author: "Bioconductor Core Team"
+date: "`r Sys.Date()`"
+output: BiocStyle::html_document
+vignette: >
+  %\VignetteIndexEntry{BiocAgentRAGDB: RAG Knowledge Base for BiocAgent}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+# Introduction
+
+**BiocAgentRAGDB** provides a pre-built retrieval-augmented generation (RAG)
+database containing the source code, vignettes, and metadata from all
+Bioconductor packages (~3,000 packages). This database enables the `BiocAgent`
+chat assistant to ground its LLM responses in real Bioconductor documentation.
+
+The database is:
+
+- **Hosted on ExperimentHub** for easy, versioned distribution
+- **Cached locally via BiocFileCache** for fast repeated access
+- **DuckDB-based** (via `ragnar`) with dual BM25 + vector similarity indexing
+
+# Installation
+
+```{r install}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("BiocAgentRAGDB")
+```
+
+# Fetching the Database
+
+On first use, download the database from ExperimentHub:
+
+```{r fetch}
+library(BiocAgentRAGDB)
+
+# Download and cache locally
+db_path <- ragdb_fetch()
+
+# Check where it's stored
+ragdb_info()
+```
+
+The database is cached in `tools::R_user_dir("BiocAgentRAGDB", "data")` by
+default. Subsequent calls to `ragdb_fetch()` return the cached copy instantly.
+
+# Updating the Database
+
+When a new version is released on ExperimentHub:
+
+```{r update}
+ragdb_update()
+```
+
+# Using with BiocAgent
+
+The primary use case is as a knowledge source for `BiocAgent`:
+
+```{r biocagent}
+library(BiocAgent)
+
+# Option 1: BiocAgent auto-detects the database
+chat <- bioc_chat(ragdb = TRUE)
+
+# Option 2: Explicit path
+chat <- bioc_chat(ragdb = ragdb_path())
+
+# The LLM now has access to Bioconductor documentation
+chat$chat("How do I use DESeq2 for differential expression analysis?")
+```
+
+# Configuration
+
+## Custom Cache Location
+
+Override the default cache path:
+
+```{r config}
+# Via R option
+options(BiocAgentRAGDB.path = "/data/shared/bioc_ragdb.duckdb")
+
+# Via environment variable (e.g. in .Renviron)
+# BIOCAGENT_RAGDB_PATH=/data/shared/bioc_ragdb.duckdb
+```
+
+# Database Contents
+
+The RAG database is built from all Bioconductor packages and includes:
+
+| Source | Content |
+|--------|---------|
+| `R/*.R` | Function source code and roxygen documentation |
+| `vignettes/` | Vignettes (Rmd, qmd, Rnw, md) |
+| `DESCRIPTION` | Package metadata (title, description, dependencies) |
+| `NAMESPACE` | Exported/imported functions |
+
+See `inst/scripts/build_ragdb.Rmd` in the package source for the complete
+build pipeline.
+
+# Session Info
+
+```{r sessionInfo, eval=TRUE}
+sessionInfo()
+```

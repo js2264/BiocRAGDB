@@ -1,0 +1,2 @@
+Title,Description,BiocVersion,Genome,SourceType,SourceUrl,SourceVersion,Species,TaxonomyId,Coordinate_1_based,DataProvider,Maintainer,RDataClass,DispatchClass,RDataPath
+BiocAgentRAGDB: RAG Knowledge Base for BiocAgent,"DuckDB-backed RAG database containing chunked and embedded source code, vignettes, DESCRIPTION, and NAMESPACE files from all Bioconductor software packages. Built with ragnar.",3.21,NA,DuckDB,https://git.bioconductor.org/packages/,20260322,NA,NA,NA,Bioconductor,Jacques Serizay <jacquesserizay@gmail.com>,character,FilePath,BiocAgentRAGDB/bioc_ragdb.duckdb
