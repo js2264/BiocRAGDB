@@ -2,7 +2,7 @@
 % Please edit documentation in R/ragdb.R
 \name{ragdb_update}
 \alias{ragdb_update}
-\title{Update the Local BiocAgentRAGDB}
+\title{Update the Local BiocRAGDB}
 \usage{
 ragdb_update()
 }

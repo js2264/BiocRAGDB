@@ -2,7 +2,7 @@
 % Please edit documentation in R/ragdb.R
 \name{ragdb_path}
 \alias{ragdb_path}
-\title{Get the Local Path to the BiocAgentRAGDB Database}
+\title{Get the Local Path to the BiocRAGDB Database}
 \usage{
 ragdb_path(check = TRUE)
 }
@@ -15,13 +15,13 @@ A character string with the path to the DuckDB file, or \code{NULL}
 if \code{check = TRUE} and the file does not exist.
 }
 \description{
-Returns the local filesystem path to the cached BiocAgentRAGDB DuckDB
+Returns the local filesystem path to the cached BiocRAGDB DuckDB
 database, managed by \pkg{BiocFileCache}.
 }
 \details{
 The path is resolved from (in order of priority):
 \enumerate{
-\item The \code{BiocAgentRAGDB.path} option (user override)
+\item The \code{BiocRAGDB.path} option (user override)
 \item The \code{BIOCAGENT_RAGDB_PATH} environment variable (user override)
 \item The BiocFileCache entry for the database
 }

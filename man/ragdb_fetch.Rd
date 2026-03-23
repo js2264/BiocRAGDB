@@ -2,7 +2,7 @@
 % Please edit documentation in R/ragdb.R
 \name{ragdb_fetch}
 \alias{ragdb_fetch}
-\title{Fetch the BiocAgentRAGDB from ExperimentHub}
+\title{Fetch the BiocRAGDB from ExperimentHub}
 \usage{
 ragdb_fetch(force = FALSE)
 }
@@ -14,7 +14,7 @@ Default: \code{FALSE}.}
 The file path to the local DuckDB database (invisibly).
 }
 \description{
-Downloads (or retrieves from cache) the BiocAgentRAGDB DuckDB database
+Downloads (or retrieves from cache) the BiocRAGDB DuckDB database
 from ExperimentHub and stores it in a local \pkg{BiocFileCache}.
 }
 \details{
@@ -24,7 +24,7 @@ On first call, it is downloaded from ExperimentHub and added to a local
 unless \code{force = TRUE}.
 
 The BiocFileCache used is located at
-\code{tools::R_user_dir("BiocAgentRAGDB", "cache")}.
+\code{tools::R_user_dir("BiocRAGDB", "cache")}.
 }
 \examples{
 \dontrun{

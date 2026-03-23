@@ -21,46 +21,25 @@ the source code, vignettes, and metadata from all Bioconductor packages.
 The resulting database file is uploaded to ExperimentHub for distribution via
 the `BiocRAGDB` package.
 
-## Requirements
-
 ```{r install-deps}
 BiocManager::install(c("ragnar", "BiocPkgTools"))
 ```
 
-## Pipeline Summary
-
-1. Enumerate all Bioconductor packages (~3,000)
-2. Clone/shallow-fetch each package from `git.bioconductor.org`
-3. Extract and chunk: `R/*.R`, `vignettes/*`, `DESCRIPTION`, `NAMESPACE`
-4. Embed chunks and build the ragnar DuckDB store
-5. Upload to ExperimentHub
-
-# Step 1: Enumerate Bioconductor Packages
-
-```{r list-packages}
-library(BiocPkgTools)
-
-## Fetch the full list of Bioconductor software packages
-pkg_tbl <- biocPkgList()
-pkg_names <- pkg_tbl$Package
-message(sprintf("Found %d Bioconductor packages", length(pkg_names)))
-```
-
-# Step 2: Clone Package Sources
+# Clone package sources
 
 All Bioconductor packages are hosted at `https://git.bioconductor.org/packages/`.
 We use shallow clones (`--depth 1`) to minimize bandwidth and disk usage.
 
 ```{r setup-clone-dir}
-clone_base <- file.path(tempdir(), "bioc_sources")
-dir.create(clone_base, showWarnings = FALSE, recursive = TRUE)
-```
+library(BiocPkgTools)
+library(ragnar)
+clone_base <- "/pasteur/appa/scratch/jaseriza/BiocRAGDB"
+files_dirs <- file.path(clone_base, "all_files")
+db_path <- file.path(clone_base, "bioc_ragdb.duckdb")
+all_files <- list.files(files_dirs, full.names = TRUE, recursive = TRUE)
 
-```{r clone-packages}
 clone_package <- function(pkg, base_dir, branch = "devel") {
-    repo_url <- sprintf(
-        "https://git.bioconductor.org/packages/%s", pkg
-    )
+    repo_url <- sprintf("https://git.bioconductor.org/packages/%s", pkg)
     dest <- file.path(base_dir, pkg)
     if (dir.exists(dest)) return(dest)
     result <- tryCatch(
@@ -84,33 +63,17 @@ clone_package <- function(pkg, base_dir, branch = "devel") {
     result
 }
 
-## Clone all packages (parallelized with future.apply if available)
+dir.create(clone_base, showWarnings = FALSE, recursive = TRUE)
+pkg_tbl <- biocPkgList()
+pkg_names <- pkg_tbl$Package
 future::plan(future::multisession, workers = 8L)
-pkg_dirs <- future.apply::future_vapply(
-    pkg_names, clone_package,
-    character(1),
-    base_dir = clone_base,
-    future.seed = NULL
-)
-
-## Remove failed clones
-pkg_dirs <- pkg_dirs[!is.na(pkg_dirs)]
-message(sprintf("Successfully cloned %d packages", length(pkg_dirs)))
+future.apply::future_vapply(pkg_names, clone_package, character(1), base_dir = clone_base, future.seed = NULL, .progress = TRUE)
 ```
 
-# Step 3: List all files then extract and chunk them
-
-We extract four types of content per package:
-
-| Source | File Pattern | Purpose |
-|--------|-------------|---------|
-| `R/*.R` | `R/` directory | Function code + roxygen docs |
-| Vignettes | `vignettes/*.{Rmd,qmd,Rnw,md}` | Tutorials and workflows |
-| `DESCRIPTION` | Root | Metadata: title, description, deps |
-| `NAMESPACE` | Root | Exported/imported symbols |
+# List all files then extract and chunk them
 
 ```{r extract-helpers}
-collect_package_files <- function(pkg_dir) {
+collect_package_files <- function(pkg_dir, out_dir) {
     pkg_name <- basename(pkg_dir)
     files <- character(0)
 
@@ -147,120 +110,56 @@ collect_package_files <- function(pkg_dir) {
     ns_file <- file.path(pkg_dir, "NAMESPACE")
     if (file.exists(ns_file)) files <- c(files, ns_file)
 
-    files
+    # Now copy these files to the output directory, preserving relative paths
+    if (length(files) == 0L) {
+        warning(sprintf("No relevant files found for %s", pkg_name))
+    } else {
+        purrr::map(files, function(f) {
+            rel_path <- sub(
+                paste0(".*?/", pkg_name, "/"),
+                paste0(pkg_name, "/"),
+                f
+            )
+            dest_path <- file.path(files_dirs, rel_path)
+            dir.create(dirname(dest_path), showWarnings = FALSE, recursive = TRUE)
+            file.copy(f, dest_path, overwrite = TRUE)
+        })
+    }
+
 }
 
-file_to_document <- function(file_path, pkg_name) {
-    rel_path <- sub(
-        paste0(".*?/", pkg_name, "/"),
-        paste0(pkg_name, "/"),
-        file_path
-    )
-    ext <- tolower(tools::file_ext(file_path))
-
-    content <- tryCatch(
-        paste(readLines(file_path, warn = FALSE), collapse = "\n"),
-        error = function(e) return(NA_character_)
-    )
-    if (is.na(content) || nchar(content) == 0L) return(NULL)
-
-    # Format as markdown with package/file context as headings
-    lang <- switch(ext,
-        r = "r",
-        rmd = "rmd", qmd = "qmd", rnw = "rnw",
-        md = "markdown",
-        ""
-    )
-    md_text <- paste0(
-        "# Package: ", pkg_name, "\n",
-        "## File: ", rel_path, "\n\n",
-        "```", lang, "\n",
-        content, "\n",
-        "```\n"
-    )
-
-    # Create a MarkdownDocument with origin metadata
-    # The origin is preserved through chunking and into the store
-    ragnar::MarkdownDocument(md_text, origin = file_path)
-}
-
-process_package_files <- function(pkg_dir) {
-    pkg_name <- basename(pkg_dir)
-    files <- collect_package_files(pkg_dir)
-
-    if (length(files) == 0L) return(list())
-
-    docs <- lapply(files, function(f) {
-        tryCatch(
-            file_to_document(f, pkg_name),
-            error = function(e) {
-                warning(
-                    sprintf("Failed to process %s: %s", f, e$message)
-                )
-                NULL
-            }
-        )
-    })
-    docs <- Filter(Negate(is.null), docs)
-    return(docs)
-}
-
-process_package_chunks <- function(files) {
-    chunks_list <- lapply(files, function(f) {
-        rel_path <- sub(
-            paste0(".*?/", pkg_name, "/"),
-            paste0(pkg_name, "/"),
-            f
-        )
-
-        tryCatch(
-            ragnar::markdown_chunk(f),
-            error = function(e) {
-                warning(
-                    sprintf("Chunking failed for %s: %s", rel_path, e$message)
-                )
-                NULL
-            }
-        )
-    })
-
-    Filter(Negate(is.null), chunks_list)
-}
+pkg_dirs <- list.dirs(clone_base, full.names = TRUE, recursive = FALSE)
+pkg_dirs <- pkg_dirs[pkg_dirs != file.path(clone_base, "all_files")]
+purrr::map(pkg_dirs, collect_package_files, out_dir = files_dirs, .progress = TRUE)
+all_files <- list.files(files_dirs, full.names = TRUE, recursive = TRUE)
 ```
 
-# Step 4: Create the RAG Store and Ingest
+# Process each file into chunks and insert into the ragnar store
 
-```{r create-store}
+```{r build-store}
 ## Define the embedding function
 ## Using Ollama with nomic-embed-text for a fully local build.
 ## THIS REQUIRES OLAMA TO BE INSTALLED AND THE MODEL TO BE AVAILABLE LOCALLY.
 ##        sh> ollama pull nomic-embed-text
-library(ragnar)
-db_path <- file.path(tempdir(), "bioc_ragdb.duckdb")
-store <- ragnar::ragnar_store_create(db_path, embed = function(x) {ragnar::embed_ollama(x, model = "nomic-embed-text")})
-
-for (i in seq_along(pkg_dirs)) {
-    message(sprintf("[%d/%d] Processing %s...", i, n_pkgs, pkg_name))
-    pkg_dir <- pkg_dirs[i]
-    pkg_name <- basename(pkg_dir)
-    pkg_files <- process_package_files(pkg_dir)
-    chunks_list <- tryCatch(
-        process_package_chunks(pkg_files),
-        error = function(e) {
-            warning(sprintf("Failed to process %s: %s", pkg_name, e$message))
-            list()
-        }
-    )
-
-    for (chunks in chunks_list) {
-        ragnar::ragnar_store_insert(store, chunks)
-    }
+store <- ragnar::ragnar_store_create(
+    db_path,
+    embed = function(x) {ragnar::embed_ollama(x, model = "nomic-embed-text")}, 
+    embedding_size = 768L,
+    overwrite = TRUE, 
+    name = "BiocRAGDB", 
+    title = "BiocRAGDB"
+)
+for (f in all_files[1:100]) {
+    print(paste("Processing:", f))
+    rel_path <- sub(paste0(files_dirs, "/"), "", f, fixed = TRUE)
+    chunks <- BiocRAGDB::chunk_bioc_file(f, origin = rel_path)
+    ragnar::ragnar_store_insert(store, chunks)
 }
 ```
 
 # Step 5: Build Indexes
 
-After all chunks are inserted, build the BM25 full-text and vector similarity
+After all chunks are inserted, build the full-text and vector similarity
 indexes for efficient retrieval.
 
 ```{r build-indexes}
@@ -274,13 +173,13 @@ Run some sanity checks on the built database.
 
 ```{r validate}
 ## Reconnect to verify
-store <- ragnar::ragnar_store_connect(location = db_path)
+store <- ragnar::ragnar_store_connect(location = "/pasteur/appa/scratch/jaseriza/BiocRAGDB/bioc_ragdb.duckdb")
 
 ## Test a retrieval
 results <- ragnar::ragnar_retrieve(
     store,
-    "differential expression analysis with DESeq2",
-    top_k = 5
+    "how can I esimate dropouts in single cell data?",
+    top_k = 20
 )
 print(results[, c("origin", "doc_id", "text")])
 

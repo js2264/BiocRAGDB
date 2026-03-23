@@ -2,7 +2,7 @@
 % Please edit documentation in R/ragdb.R
 \name{ragdb_info}
 \alias{ragdb_info}
-\title{Information About the Local BiocAgentRAGDB}
+\title{Information About the Local BiocRAGDB}
 \usage{
 ragdb_info()
 }
