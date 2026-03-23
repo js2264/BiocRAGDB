@@ -1,5 +1,5 @@
 test_that("ragdb_path returns NULL with no cache and check = TRUE", {
-    withr::local_options(BiocAgentRAGDB.path = NULL)
+    withr::local_options(BiocRAGDB.path = NULL)
     withr::local_envvar(BIOCAGENT_RAGDB_PATH = NA)
     # With a fresh temp cache dir, no entry exists
     tmp_cache <- tempfile("bfc_test_")
@@ -14,24 +14,24 @@ test_that("ragdb_path returns NULL with no cache and check = TRUE", {
 })
 
 test_that("ragdb_path respects option", {
-    withr::local_options(BiocAgentRAGDB.path = "/tmp/test_ragdb.duckdb")
+    withr::local_options(BiocRAGDB.path = "/tmp/test_ragdb.duckdb")
     path <- ragdb_path(check = FALSE)
     expect_equal(path, "/tmp/test_ragdb.duckdb")
 })
 
 test_that("ragdb_path respects option with check = TRUE", {
-    withr::local_options(BiocAgentRAGDB.path = "/tmp/nonexistent_ragdb.duckdb")
+    withr::local_options(BiocRAGDB.path = "/tmp/nonexistent_ragdb.duckdb")
     expect_null(ragdb_path(check = TRUE))
 })
 
 test_that("ragdb_path respects environment variable", {
-    withr::local_options(BiocAgentRAGDB.path = NULL)
+    withr::local_options(BiocRAGDB.path = NULL)
     withr::local_envvar(BIOCAGENT_RAGDB_PATH = "/tmp/env_ragdb.duckdb")
     expect_equal(ragdb_path(check = FALSE), "/tmp/env_ragdb.duckdb")
 })
 
 test_that("ragdb_path finds entry in BiocFileCache", {
-    withr::local_options(BiocAgentRAGDB.path = NULL)
+    withr::local_options(BiocRAGDB.path = NULL)
     withr::local_envvar(BIOCAGENT_RAGDB_PATH = NA)
 
     tmp_cache <- tempfile("bfc_test_")
@@ -42,7 +42,7 @@ test_that("ragdb_path finds entry in BiocFileCache", {
     fake_db <- tempfile(fileext = ".duckdb")
     writeLines("placeholder", fake_db)
     bfc <- BiocFileCache::BiocFileCache(tmp_cache, ask = FALSE)
-    BiocFileCache::bfcadd(bfc, "BiocAgentRAGDB", fpath = fake_db, action = "copy")
+    BiocFileCache::bfcadd(bfc, "BiocRAGDB", fpath = fake_db, action = "copy")
 
     mockery::stub(ragdb_path, ".ragdb_cache", function() bfc)
     path <- ragdb_path(check = TRUE)
@@ -51,7 +51,7 @@ test_that("ragdb_path finds entry in BiocFileCache", {
 })
 
 test_that("ragdb_info handles missing database gracefully", {
-    withr::local_options(BiocAgentRAGDB.path = NULL)
+    withr::local_options(BiocRAGDB.path = NULL)
     withr::local_envvar(BIOCAGENT_RAGDB_PATH = NA)
     tmp_cache <- tempfile("bfc_test_")
     dir.create(tmp_cache)
@@ -92,11 +92,11 @@ test_that("ragdb_info shows info for existing database", {
     writeLines("placeholder", fake_db)
     bfc <- BiocFileCache::BiocFileCache(tmp_cache, ask = FALSE)
     cached <- BiocFileCache::bfcadd(
-        bfc, "BiocAgentRAGDB", fpath = fake_db, action = "copy"
+        bfc, "BiocRAGDB", fpath = fake_db, action = "copy"
     )
 
-    withr::local_options(BiocAgentRAGDB.path = as.character(cached))
-    expect_message(info <- ragdb_info(), "BiocAgentRAGDB")
+    withr::local_options(BiocRAGDB.path = as.character(cached))
+    expect_message(info <- ragdb_info(), "BiocRAGDB")
     expect_type(info, "list")
     expect_named(info, c("path", "size_mb", "modified"))
 })

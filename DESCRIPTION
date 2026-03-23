@@ -1,4 +1,4 @@
-Package: BiocAgentRAGDB
+Package: BiocRAGDB
 Title: RAG Knowledge Base for BiocAgent from Bioconductor Package Sources
 Version: 0.99.0
 Authors@R: c(
@@ -35,7 +35,7 @@ Suggests:
     rmarkdown,
     BiocStyle
 biocViews: ExperimentHub, ExperimentData, ReproducibleResearch
-BugReports: https://github.com/Bioconductor/BiocAgentRAGDB/issues
-URL: https://github.com/Bioconductor/BiocAgentRAGDB
+BugReports: https://github.com/Bioconductor/BiocRAGDB/issues
+URL: https://github.com/Bioconductor/BiocRAGDB
 VignetteBuilder: knitr
 Config/testthat/edition: 3

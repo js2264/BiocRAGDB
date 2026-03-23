@@ -1,4 +1,4 @@
 library(testthat)
-library(BiocAgentRAGDB)
+library(BiocRAGDB)
 
-test_check("BiocAgentRAGDB")
+test_check("BiocRAGDB")

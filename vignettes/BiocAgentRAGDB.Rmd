@@ -1,10 +1,10 @@
 ---
-title: "BiocAgentRAGDB: RAG Knowledge Base for BiocAgent"
+title: "BiocRAGDB: RAG Knowledge Base for BiocAgent"
 author: "Bioconductor Core Team"
 date: "`r Sys.Date()`"
 output: BiocStyle::html_document
 vignette: >
-  %\VignetteIndexEntry{BiocAgentRAGDB: RAG Knowledge Base for BiocAgent}
+  %\VignetteIndexEntry{BiocRAGDB: RAG Knowledge Base for BiocAgent}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -15,7 +15,7 @@ knitr::opts_chunk$set(eval = FALSE)
 
 # Introduction
 
-**BiocAgentRAGDB** provides a pre-built retrieval-augmented generation (RAG)
+**BiocRAGDB** provides a pre-built retrieval-augmented generation (RAG)
 database containing the source code, vignettes, and metadata from all
 Bioconductor packages (~3,000 packages). This database enables the `BiocAgent`
 chat assistant to ground its LLM responses in real Bioconductor documentation.
@@ -31,7 +31,7 @@ The database is:
 ```{r install}
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
-BiocManager::install("BiocAgentRAGDB")
+BiocManager::install("BiocRAGDB")
 ```
 
 # Fetching the Database
@@ -39,7 +39,7 @@ BiocManager::install("BiocAgentRAGDB")
 On first use, download the database from ExperimentHub:
 
 ```{r fetch}
-library(BiocAgentRAGDB)
+library(BiocRAGDB)
 
 # Download and cache locally
 db_path <- ragdb_fetch()
@@ -48,7 +48,7 @@ db_path <- ragdb_fetch()
 ragdb_info()
 ```
 
-The database is cached in `tools::R_user_dir("BiocAgentRAGDB", "data")` by
+The database is cached in `tools::R_user_dir("BiocRAGDB", "data")` by
 default. Subsequent calls to `ragdb_fetch()` return the cached copy instantly.
 
 # Updating the Database
@@ -84,7 +84,7 @@ Override the default cache path:
 
 ```{r config}
 # Via R option
-options(BiocAgentRAGDB.path = "/data/shared/bioc_ragdb.duckdb")
+options(BiocRAGDB.path = "/data/shared/bioc_ragdb.duckdb")
 
 # Via environment variable (e.g. in .Renviron)
 # BIOCAGENT_RAGDB_PATH=/data/shared/bioc_ragdb.duckdb

@@ -1,11 +1,11 @@
-#' Get the Local Path to the BiocAgentRAGDB Database
+#' Get the Local Path to the BiocRAGDB Database
 #'
-#' Returns the local filesystem path to the cached BiocAgentRAGDB DuckDB
+#' Returns the local filesystem path to the cached BiocRAGDB DuckDB
 #' database, managed by \pkg{BiocFileCache}.
 #'
 #' The path is resolved from (in order of priority):
 #'
-#' 1. The `BiocAgentRAGDB.path` option (user override)
+#' 1. The `BiocRAGDB.path` option (user override)
 #' 2. The `BIOCAGENT_RAGDB_PATH` environment variable (user override)
 #' 3. The BiocFileCache entry for the database
 #'
@@ -25,7 +25,7 @@
 #' @export
 ragdb_path <- function(check = TRUE) {
     # 1. Check option (user override)
-    path <- getOption("BiocAgentRAGDB.path")
+    path <- getOption("BiocRAGDB.path")
     if (!is.null(path)) {
         if (!check || file.exists(path)) return(path)
         return(NULL)
@@ -40,7 +40,7 @@ ragdb_path <- function(check = TRUE) {
 
     # 3. Check BiocFileCache
     bfc <- .ragdb_cache()
-    entry <- BiocFileCache::bfcquery(bfc, "BiocAgentRAGDB", field = "rname")
+    entry <- BiocFileCache::bfcquery(bfc, "BiocRAGDB", field = "rname")
     if (nrow(entry) > 0L) {
         cached_path <- entry$rpath[1L]
         if (!check || file.exists(cached_path)) return(cached_path)
@@ -50,9 +50,9 @@ ragdb_path <- function(check = TRUE) {
 }
 
 
-#' Fetch the BiocAgentRAGDB from ExperimentHub
+#' Fetch the BiocRAGDB from ExperimentHub
 #'
-#' Downloads (or retrieves from cache) the BiocAgentRAGDB DuckDB database
+#' Downloads (or retrieves from cache) the BiocRAGDB DuckDB database
 #' from ExperimentHub and stores it in a local \pkg{BiocFileCache}.
 #'
 #' @param force Logical. If `TRUE`, re-downloads even if a local copy exists.
@@ -67,7 +67,7 @@ ragdb_path <- function(check = TRUE) {
 #' unless `force = TRUE`.
 #'
 #' The BiocFileCache used is located at
-#' `tools::R_user_dir("BiocAgentRAGDB", "cache")`.
+#' `tools::R_user_dir("BiocRAGDB", "cache")`.
 #'
 #' @examples
 #' \dontrun{
@@ -81,7 +81,7 @@ ragdb_path <- function(check = TRUE) {
 #' @export
 ragdb_fetch <- function(force = FALSE) {
     bfc <- .ragdb_cache()
-    rname <- "BiocAgentRAGDB"
+    rname <- "BiocRAGDB"
 
     # Check if already in cache
     entry <- BiocFileCache::bfcquery(bfc, rname, field = "rname")
@@ -89,7 +89,7 @@ ragdb_fetch <- function(force = FALSE) {
     if (nrow(entry) > 0L && !force) {
         cached_path <- entry$rpath[1L]
         if (file.exists(cached_path)) {
-            message("BiocAgentRAGDB already cached at: ", cached_path)
+            message("BiocRAGDB already cached at: ", cached_path)
             return(invisible(cached_path))
         }
         # Stale entry — remove and re-fetch
@@ -107,13 +107,13 @@ ragdb_fetch <- function(force = FALSE) {
     cached_path <- BiocFileCache::bfcadd(
         bfc, rname = rname, fpath = eh_path, action = "copy"
     )
-    message("BiocAgentRAGDB cached at: ", cached_path)
+    message("BiocRAGDB cached at: ", cached_path)
 
     invisible(as.character(cached_path))
 }
 
 
-#' Update the Local BiocAgentRAGDB
+#' Update the Local BiocRAGDB
 #'
 #' Re-downloads the RAG database from ExperimentHub and updates
 #' the local \pkg{BiocFileCache} entry.
@@ -131,7 +131,7 @@ ragdb_update <- function() {
 }
 
 
-#' Information About the Local BiocAgentRAGDB
+#' Information About the Local BiocRAGDB
 #'
 #' Prints summary information about the locally cached RAG database,
 #' including its path, file size, and modification time.
@@ -150,7 +150,7 @@ ragdb_info <- function() {
 
     if (is.null(path)) {
         message(
-            "BiocAgentRAGDB is not cached locally.\n",
+            "BiocRAGDB is not cached locally.\n",
             "Run ragdb_fetch() to download it."
         )
         return(invisible(NULL))
@@ -164,7 +164,7 @@ ragdb_info <- function() {
     )
 
     message(
-        "BiocAgentRAGDB\n",
+        "BiocRAGDB\n",
         "  Path:     ", info$path, "\n",
         "  Size:     ", info$size_mb, " MB\n",
         "  Modified: ", format(info$modified, "%Y-%m-%d %H:%M:%S")
@@ -182,11 +182,11 @@ ragdb_info <- function() {
     if (is.null(x)) y else x
 }
 
-#' Get or create the BiocFileCache for BiocAgentRAGDB
+#' Get or create the BiocFileCache for BiocRAGDB
 #' @return A BiocFileCache object
 #' @noRd
 .ragdb_cache <- function() {
-    cache_dir <- tools::R_user_dir("BiocAgentRAGDB", "cache")
+    cache_dir <- tools::R_user_dir("BiocRAGDB", "cache")
     BiocFileCache::BiocFileCache(cache_dir, ask = FALSE)
 }
 
