@@ -98,6 +98,7 @@ biocragdb_store_insert <- function(store, chunks) {
 #'
 #' @export
 biocragdb_store_index <- function(store) {
+    .ollama_running() || .ollama_start()
     ragnar::ragnar_store_build_index(store)
 }
 
@@ -113,5 +114,5 @@ biocragdb_store_index <- function(store) {
 #'
 #' @export
 biocragdb_store_connect <- function(db_path) {
-    ragnar::ragnar_store_connect(db_path)
+    ragnar::ragnar_store_connect(db_path, read_only = TRUE)
 }

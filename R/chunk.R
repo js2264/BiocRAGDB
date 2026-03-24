@@ -33,7 +33,7 @@ chunk_bioc_file <- function(file_path) {
 
     ext <- tolower(tools::file_ext(file_path))
     bname <- basename(file_path)
-    rel_path <- sub(paste0(base_dir, "/"), "", file_path, fixed = TRUE)
+    rel_path <- sub(file.path(base_dir, "all_files", ""), "", file_path, fixed = TRUE)
     origin <- rel_path %||% file_path
 
     ## ── DESCRIPTION / NAMESPACE: single chunk ──

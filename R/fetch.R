@@ -32,15 +32,23 @@
 #' }
 #'
 #' @export
-fetch_pkgs_resources <- function(base_dir, pkgs = NULL, branch = "devel", BPPARAM = BiocParallel::bpparam(), remove_clones = FALSE) {
-
+fetch_pkgs_resources <- function(
+    base_dir, 
+    pkgs = NULL, 
+    branch = "devel", 
+    remove_clones = FALSE, 
+    force = FALSE,
+    BPPARAM = BiocParallel::bpparam()
+) {
 
     # Ensure the base directory exists
     if (dir.exists(base_dir)) {
-        message(sprintf("Base directory %s already exists. Existing files may be overwritten.", base_dir))
-        ask <- readline(prompt = "Do you want to continue? (y/n): ")
-        if (tolower(ask) != "y") {
-            stop("Operation cancelled by user.")
+        if (!force) {
+            message(sprintf("Base directory %s already exists. Existing files may be overwritten.", base_dir))
+            ask <- readline(prompt = "Do you want to continue? (y/n): ")
+            if (tolower(ask) != "y") {
+                stop("Operation cancelled by user.")
+            }
         }
     }
     dir.create(base_dir, showWarnings = FALSE, recursive = TRUE)
