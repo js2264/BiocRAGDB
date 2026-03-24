@@ -1,4 +1,34 @@
-#' @export 
+#' Chunk a Bioconductor Package File into Markdown Segments
+#'
+#' Reads a single file from a Bioconductor package and splits it into
+#' semantically meaningful markdown chunks suitable for insertion into a
+#' RAG store.
+#'
+#' The chunking strategy depends on the file type:
+#' \describe{
+#'   \item{`DESCRIPTION` / `NAMESPACE`}{Returned as a single chunk.}
+#'   \item{`.R`}{Parsed with AST-aware splitting so that each top-level
+#'     expression (together with its roxygen block) becomes one chunk.}
+#'   \item{`.Rmd` / `.qmd` / `.md`}{Split by section headings
+#'     (levels 1 and 2).}
+#'   \item{`.Rnw`}{Converted from LaTeX to markdown via
+#'     [rnw_to_markdown()], then split by section headings.}
+#'   \item{Other}{Generic markdown chunking via
+#'     \code{\link[ragnar]{read_as_markdown}}.}
+#' }
+#'
+#' @param file_path Character string. Path to the file to chunk.
+#'
+#' @return A data frame of chunks as returned by
+#'   \code{\link[ragnar]{markdown_chunk}}.
+#'
+#' @examples
+#' \dontrun{
+#' chunks <- chunk_bioc_file("path/to/pkg/R/foo.R")
+#' nrow(chunks)
+#' }
+#'
+#' @export
 chunk_bioc_file <- function(file_path) {
 
     ext <- tolower(tools::file_ext(file_path))
@@ -47,8 +77,7 @@ chunk_bioc_file <- function(file_path) {
     .safe_markdown_chunk(md)
 }
 
-#' Wrapper around ragnar::markdown_chunk that retries after stripping
-#' footnote syntax when xml2/libxml2 version mismatches cause failures.
+#' @noRd
 .safe_markdown_chunk <- function(md, ...) {
     tryCatch(
         ragnar::markdown_chunk(md, ...),
@@ -63,8 +92,17 @@ chunk_bioc_file <- function(file_path) {
     )
 }
 
-#' Convert R source file to markdown with one ### section per top-level expression
-#' Roxygen comments are kept with their function.
+#' Convert an R Source File to Markdown
+#'
+#' Parses an R file and produces a markdown document with one
+#' `### heading` per top-level expression. Roxygen comments preceding a
+#' function are kept together with the function body.
+#'
+#' @param file_path Character string. Path to the `.R` file.
+#'
+#' @return A single character string containing the markdown representation.
+#'
+#' @keywords internal
 r_to_markdown <- function(file_path) {
     lines <- readLines(file_path, warn = FALSE)
     if (length(lines) == 0) return("")
@@ -106,10 +144,22 @@ r_to_markdown <- function(file_path) {
     paste(sections, collapse = "\n\n")
 }
 
-#' Convert an Rnw (Sweave/knitr) file to markdown.
-#' Extracts code chunks, pre-processes Bioconductor LaTeX macros,
-#' uses pandoc for LaTeX-to-markdown conversion, then restores code chunks.
-#' Falls back to regex-based conversion if pandoc fails.
+#' Convert an Rnw File to Markdown
+#'
+#' Converts a Sweave / knitr `.Rnw` file to markdown.
+#' Code chunks are extracted first, Bioconductor-specific LaTeX macros
+#' (e.g. `\\Rpackage`, `\\Biocpkg`) are normalised, and the LaTeX body
+#' is converted to markdown via **pandoc**. If pandoc is unavailable or
+#' fails, a regex-based fallback is used instead.
+#'
+#' @param file_path Character string. Path to the `.Rnw` file.
+#'
+#' @return A single character string containing the markdown representation.
+#'
+#' @seealso [.find_pandoc()] for pandoc discovery,
+#'   [.latex_to_markdown_fallback()] for the regex fallback.
+#'
+#' @keywords internal
 rnw_to_markdown <- function(file_path) {
     lines <- readLines(file_path, warn = FALSE)
 
@@ -222,7 +272,7 @@ rnw_to_markdown <- function(file_path) {
     md_text
 }
 
-#' Simple regex-based LaTeX to markdown conversion (fallback when pandoc fails)
+#' @noRd
 .latex_to_markdown_fallback <- function(tex_lines) {
     txt <- paste(tex_lines, collapse = "\n")
     ## Convert sectioning commands
@@ -257,7 +307,18 @@ rnw_to_markdown <- function(file_path) {
     trimws(txt)
 }
 
-#' Best-effort name extraction from an R expression line
+#' Extract a Name from an R Expression Line
+#'
+#' Attempts to extract the assignment target or S4 method/class name from
+#' the first line of an R expression. Falls back to
+#' `expression_<fallback_index>` when no name can be inferred.
+#'
+#' @param expr_line Character string. The first line of the expression.
+#' @param fallback_index Integer. Index used to build the fallback name.
+#'
+#' @return A character string with the extracted name.
+#'
+#' @keywords internal
 extract_r_name <- function(expr_line, fallback_index) {
     # name <- ... or name = ...
     m <- regmatches(expr_line, regexpr(

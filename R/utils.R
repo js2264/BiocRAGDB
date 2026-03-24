@@ -1,4 +1,4 @@
-#' Find pandoc executable, using rmarkdown's search if available
+#' @noRd
 .find_pandoc <- function() {
     p <- Sys.which("pandoc")
     if (nzchar(p)) return(p)

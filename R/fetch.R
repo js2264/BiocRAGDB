@@ -1,4 +1,37 @@
 
+#' Fetch Bioconductor Package Sources
+#'
+#' Clones Bioconductor packages from \url{https://git.bioconductor.org}
+#' and collects their R source files, vignettes, `DESCRIPTION`, and
+#' `NAMESPACE` into a single output directory for downstream processing.
+#'
+#' @param base_dir Character string. Path to the directory where packages
+#'   will be cloned and files will be collected. Created if it does not
+#'   exist.
+#' @param pkgs Character vector of package names to fetch. When `NULL`
+#'   (the default), the full list of Bioconductor packages is obtained via
+#'   \code{biocPkgList()}.
+#' @param branch Character string. Git branch to clone.
+#'   Default: `"devel"`.
+#' @param BPPARAM A \code{\link[BiocParallel]{BiocParallelParam}} object
+#'   controlling parallelisation. Default: \code{BiocParallel::bpparam()}.
+#' @param remove_clones Logical. If `TRUE`, the cloned repositories are
+#'   deleted after collecting files to save disk space.
+#'   Default: `FALSE`.
+#'
+#' @return A character vector of paths to the collected files (invisibly).
+#'
+#' @examples
+#' \dontrun{
+#' files <- fetch_pkgs_resources(
+#'     base_dir = tempdir(),
+#'     pkgs = c("GenomicRanges", "IRanges"),
+#'     branch = "devel"
+#' )
+#' head(files)
+#' }
+#'
+#' @export
 fetch_pkgs_resources <- function(base_dir, pkgs = NULL, branch = "devel", BPPARAM = BiocParallel::bpparam(), remove_clones = FALSE) {
 
 
@@ -45,8 +78,7 @@ fetch_pkgs_resources <- function(base_dir, pkgs = NULL, branch = "devel", BPPARA
 
 }
 
-
-
+#' @noRd
 .collect_package_files <- function(pkg_dir, out_dir) {
     pkg_name <- basename(pkg_dir)
     files <- character(0)
