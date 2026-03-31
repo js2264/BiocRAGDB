@@ -2,7 +2,7 @@
 ## Run from the package root: Rscript inst/scripts/make-metadata.R
 
 metadata <- data.frame(
-    Title = "BiocRAGDB: RAG Knowledge Base for BiocAgent",
+    Title = "BiocKB: Bioconductor Knowledge Base for AI-Assisted Analysis",
     Description = paste(
         "DuckDB-backed RAG database containing chunked and embedded",
         "source code, vignettes, DESCRIPTION, and NAMESPACE files from",
@@ -20,7 +20,7 @@ metadata <- data.frame(
     Maintainer = "Jacques Serizay <jacquesserizay@gmail.com>",
     RDataClass = "character",
     DispatchClass = "FilePath",
-    RDataPath = "BiocRAGDB/bioc_ragdb.duckdb",
+    RDataPath = "BiocKB/bioc_kb.duckdb",
     stringsAsFactors = FALSE
 )
 

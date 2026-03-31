@@ -1,5 +1,5 @@
-Package: BiocRAGDB
-Title: RAG Knowledge Base for BiocAgent from Bioconductor Package Sources
+Package: BiocKB
+Title: Bioconductor Knowledge Base for AI-Assisted Analysis
 Version: 0.99.0
 Authors@R: c(
     person("Jacques Serizay", ,
@@ -7,12 +7,12 @@ Authors@R: c(
         role = c("aut", "cre"))
     )
 Description: Provides a pre-built retrieval-augmented generation (RAG)
-    database derived from the source code, vignettes, and metadata of all
-    Bioconductor packages. The database is hosted on ExperimentHub and
-    cached locally via BiocFileCache. It is designed to be used by the
-    'BiocAgent' package to ground LLM responses in real Bioconductor
-    documentation. Includes utilities to fetch, update, and manage the local
-    copy of the RAG database.
+    knowledge base derived from the source code, vignettes, and metadata
+    of all Bioconductor packages. The database is hosted on ExperimentHub
+    and cached locally via BiocFileCache. It is designed to be used by the
+    BiocAI package suite to ground LLM responses in real Bioconductor
+    documentation. Includes utilities to fetch, chunk, and manage the
+    knowledge base.
 License: Artistic-2.0
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -22,12 +22,16 @@ Depends:
 Imports:
     ExperimentHub,
     BiocFileCache,
+    BiocManager,
+    BiocParallel,
     tools,
     utils
 Suggests:
     ragnar,
     ellmer (>= 0.3.0),
-    BiocAgent,
+    BiocPkgTools,
+    httr2,
+    jsonlite,
     mockery,
     withr,
     testthat (>= 3.0.0),
@@ -35,7 +39,7 @@ Suggests:
     rmarkdown,
     BiocStyle
 biocViews: ExperimentHub, ExperimentData, ReproducibleResearch
-BugReports: https://github.com/Bioconductor/BiocRAGDB/issues
-URL: https://github.com/Bioconductor/BiocRAGDB
+BugReports: https://github.com/Bioconductor/BiocKB/issues
+URL: https://github.com/Bioconductor/BiocKB
 VignetteBuilder: knitr
 Config/testthat/edition: 3

@@ -1,0 +1,96 @@
+---
+title: "Getting Started with BiocKB"
+author: "Jacques Serizay"
+date: "`r Sys.Date()`"
+output:
+    BiocStyle::html_document:
+        toc: true
+vignette: >
+    %\VignetteIndexEntry{Getting Started with BiocKB}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+# Introduction
+
+**BiocKB** builds and manages a RAG (Retrieval-Augmented Generation) knowledge
+base from Bioconductor documentation. It provides a DuckDB-backed vector store
+with chunked, embedded content from package vignettes, man pages, and other
+Bioconductor resources.
+
+# Installation
+
+```{r install}
+BiocManager::install("BiocKB")
+```
+
+# Store Lifecycle
+
+The typical workflow follows: create → fetch → chunk → insert → index → connect.
+
+## Create a Store
+
+```{r create}
+library(BiocKB)
+store <- biockb_store_create(path = "biockb.duckdb")
+```
+
+## Fetch Package Resources
+
+```{r fetch-pkgs}
+# Download vignettes and man pages for selected packages
+resources <- fetch_pkgs_resources(
+    packages = c("DESeq2", "GenomicRanges"),
+    destdir = "resources/"
+)
+```
+
+## Chunk and Insert
+
+```{r insert}
+# Chunk files with AST-aware R parsing
+chunks <- chunk_bioc_file("resources/DESeq2/vignettes/DESeq2.Rmd")
+
+# Insert chunks into the store
+biockb_store_insert(store, chunks)
+```
+## Index and Connect
+
+```{r index}
+# Build the embedding index
+biockb_store_index(store)
+
+# Connect to the store for querying
+store <- biockb_store_connect(path = "biockb.duckdb")
+```
+
+# Additional Corpora
+
+## Bioconductor Website
+
+```{r website}
+pages <- fetch_bioc_website()
+```
+
+## Support Site Posts
+
+```{r support}
+posts <- fetch_support_posts()
+```
+
+## biocViews Hierarchy
+
+```{r views}
+views <- fetch_bioc_views()
+ingest_bioc_views(store, views)
+```
+
+# Session Info
+
+```{r sessionInfo, eval=TRUE}
+sessionInfo()
+```

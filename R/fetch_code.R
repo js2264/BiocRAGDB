@@ -44,10 +44,12 @@ fetch_pkgs_resources <- function(
     # Ensure the base directory exists
     if (dir.exists(base_dir)) {
         if (!force) {
-            message(sprintf("Base directory %s already exists. Existing files may be overwritten.", base_dir))
-            ask <- readline(prompt = "Do you want to continue? (y/n): ")
-            if (tolower(ask) != "y") {
-                stop("Operation cancelled by user.")
+            if (interactive()) {
+                message(sprintf("Base directory %s already exists.", base_dir))
+                ask <- readline(prompt = "Do you want to continue? (y/n): ")
+                if (tolower(ask) != "y") stop("Operation cancelled by user.")
+            } else {
+                stop("Base directory already exists. Use force = TRUE to overwrite.", call. = FALSE)
             }
         }
     }
@@ -55,7 +57,8 @@ fetch_pkgs_resources <- function(
     
     # If no specific packages are provided, fetch the list of all Bioconductor packages
     if (is.null(pkgs)) {
-        pkg_tbl <- biocPkgList()
+        .check_package("BiocPkgTools", "for listing Bioconductor packages")
+        pkg_tbl <- BiocPkgTools::biocPkgList()
         pkgs <- pkg_tbl$Package
     }
     
