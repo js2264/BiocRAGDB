@@ -4,9 +4,13 @@
 \alias{kb_path}
 \title{Path to the BiocKB Database}
 \usage{
-kb_path(check = TRUE)
+kb_path(bioc_version = NULL, check = TRUE)
 }
 \arguments{
+\item{bioc_version}{Character string. Bioconductor version to retrieve
+(e.g., \code{"3.19"}, \code{"3.20"}). If \code{NULL} (the default), retrieves the
+latest available version.}
+
 \item{check}{Logical. If \code{TRUE} (the default), verifies the file exists
 and returns \code{NULL} with a message if it does not.}
 }

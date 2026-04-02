@@ -31,26 +31,37 @@
 #' @export
 chunk_bioc_file <- function(file_path, base_path = NULL) {
 
+    print(sprintf("Chunking %s", file_path))
     ext <- tolower(tools::file_ext(file_path))
     bname <- basename(file_path)
     origin <- file_path
     if (!is.null(base_path)) {
-        origin <- sub(paste0("^", gsub("([.\\+^$|(){}\\[\\]\\\\])", "\\\\\\1", base_path), "/?"), "", origin)
+        origin <- sub(paste0("^", gsub("([.\\+^$|(){}\\[\\]\\\\])", "\\\\\\1", base_path), "/?"), "", file_path)
+    }
+
+    # Skip if file is empty
+    if (file.size(file_path) == 0L) {
+        warning(sprintf("File is empty, skipping: %s", file_path))
+        return(NULL)
     }
 
     ## ── DESCRIPTION / NAMESPACE: single chunk ──
     if (bname %in% c("DESCRIPTION", "NAMESPACE")) {
         txt <- paste(readLines(file_path, warn = FALSE), collapse = "\n")
+        txt <- stringi::stri_encode(txt, to = 'UTF-8')
         md <- ragnar::MarkdownDocument(txt, origin = origin)
         return(ragnar::markdown_chunk(md, target_size = Inf))
     }
 
     ## ── R source files: AST-aware chunking ──
     if (ext %in% c("r")) {
-        md_text <- r_to_markdown(file_path)
-        md <- ragnar::MarkdownDocument(md_text, origin = origin)
+        txt <- r_to_markdown(file_path)
+        txt <- stringi::stri_encode(txt, to = 'UTF-8')
+        md <- ragnar::MarkdownDocument(txt, origin = origin)
         return(.safe_markdown_chunk(
-            md, target_size = 1000,
+            md, 
+            origin = file_path, 
+            target_size = 1000,
             segment_by_heading_levels = 3L
         ))
     }
@@ -59,17 +70,21 @@ chunk_bioc_file <- function(file_path, base_path = NULL) {
     if (ext %in% c("rmd", "qmd", "md")) {
         md <- ragnar::read_as_markdown(file_path, origin = origin)
         return(.safe_markdown_chunk(
-            md, target_size = 1000,
+            md, 
+            origin = file_path, 
+            target_size = 1000,
             segment_by_heading_levels = c(1L, 2L)
         ))
     }
 
     ## ── Vignettes (.Rnw): Sweave/knitr LaTeX via pandoc ──
     if (ext %in% c("rnw")) {
-        md_text <- rnw_to_markdown(file_path)
-        md <- ragnar::MarkdownDocument(md_text, origin = origin)
+        txt <- rnw_to_markdown(file_path)
+        md <- ragnar::MarkdownDocument(txt, origin = origin)
         return(.safe_markdown_chunk(
-            md, target_size = 1000,
+            md, 
+            origin = file_path, 
+            target_size = 1000,
             segment_by_heading_levels = c(1L, 2L)
         ))
     }
@@ -80,18 +95,47 @@ chunk_bioc_file <- function(file_path, base_path = NULL) {
 }
 
 #' @noRd
-.safe_markdown_chunk <- function(md, ...) {
+.safe_markdown_chunk <- function(md, origin, ...) {
     tryCatch(
         ragnar::markdown_chunk(md, ...),
         error = function(e) {
-            if (!grepl("StartTag|invalid element", conditionMessage(e)))
-                stop(e)
-            ## Strip footnote markers that can trigger libxml2 parsing bugs
-            txt <- gsub("\\[\\^[^]]+\\]", "", as.character(md))
-            md_clean <- ragnar::MarkdownDocument(txt, origin = attr(md, "origin") %||% "")
-            ragnar::markdown_chunk(md_clean, ...)
+            warning(
+                sprintf(
+                    "%s | markdown_chunk failed (%s), retrying with cleaned content",
+                    origin,
+                    conditionMessage(e)
+                )
+            )
+            clean_text <- .clean_control_chars_from_path(origin)
+            md_retried <- ragnar::MarkdownDocument(
+                clean_text,
+                origin = md@origin
+            )
+            chunks <- ragnar::markdown_chunk(md_retried, ...)
+            return(chunks)
         }
     )
+}
+
+#' @noRd
+# Helper: Clean control characters from file content (in-memory)
+.clean_control_chars_from_path <- function(file_path) {
+    raw_content <- readBin(file_path, "raw", file.info(file_path)$size)
+
+    # Try to decode as UTF-8, replacing invalid sequences
+    txt <- tryCatch(
+        iconv(rawToChar(raw_content), from = "UTF-8", to = "UTF-8", sub = "byte"),
+        error = function(e) rawToChar(raw_content)
+    )
+    # Remove problematic control characters (ASCII 0-31)
+    # but preserve essential ones: tab (9), newline (10), carriage return (13)
+    keep_mask <- !(raw_content %in% as.raw(c(0:8, 11:12, 14:31)))
+    clean_raw <- raw_content[keep_mask]
+    # Convert back to character string
+    txt <- rawToChar(clean_raw)
+    txt <- iconv(txt, from = "UTF-8", to = "UTF-8", sub = "drop")
+    txt <- gsub("\\[\\^[^]]+\\]", "", txt)
+    return(txt)
 }
 
 #' Convert an R Source File to Markdown

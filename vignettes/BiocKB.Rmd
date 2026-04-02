@@ -74,16 +74,18 @@ all_files <- c(
 
 ## Chunk all files in parallel
 library(future)
-plan(future::multicore, workers = 32)
-chunks <- furrr::future_map(
+plan(future::multicore, workers = 12)
+chunks <- purrr::map(
     all_files, 
     chunk_bioc_file, 
-    base_path = file.path(base_dir, "all_files"), 
-    .progress = TRUE
+    base_path = file.path(base_dir, "all_files")
 )
+saveRDS(chunks, "chunks.rds")
 
 ## Ingest chunks into a KB database
-kb <- BiocKB("biockb.duckdb", overwrite = TRUE)
+chunks <- readRDS("chunks.rds")
+chunks <- chunks[!(unlist(lapply(chunks, is.null)))]
+kb <- BiocKB("biockb-3.20.duckdb", overwrite = TRUE)
 purrr::map(chunks, insert_bioc_kb, kb = kb)
 build_bioc_index(kb)
 DBI::dbDisconnect(kb@store@con)
@@ -93,7 +95,7 @@ DBI::dbDisconnect(kb@store@con)
 
 ```{r index}
 # Connect to an existing store for querying
-kb <- BiocKB("biockb.duckdb", read_only = TRUE)
+kb <- BiocKB("biockb-3.20.duckdb", read_only = TRUE)
 retrieve_bioc_kb(kb, "How to perform differential expression analysis")$origin
 retrieve_bioc_kb(kb, "How to submit a package to Bioconductor")$origin
 ```

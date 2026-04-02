@@ -7,6 +7,9 @@
 #' @param db_path Character string. Path to the DuckDB file.
 #' @param embedding_model Character string. Name of the Ollama embedding
 #'   model to use when creating a new store. Default: `"nomic-embed-text"`.
+#' @param bioc_version Character string. Bioconductor version this KB is aligned with
+#'   (e.g., `"3.19"`, `"3.20"`). Default: current Bioconductor version from `BiocManager::version()`.
+#'   Stored as metadata for reproducibility.
 #' @param overwrite Logical. If `TRUE`, any existing store at `db_path` is
 #'   replaced when creating. Default: `FALSE`.
 #' @param read_only Logical. If `TRUE`, connect to an existing store in
@@ -31,15 +34,18 @@ BiocKB <- S7::new_class(
     properties = list(
         db_path = S7::class_character,
         embedding_model = S7::class_character,
+        bioc_version = S7::class_character,
         read_only = S7::class_logical,
         store = S7::class_any
     ),
     constructor = function(
         db_path,
         embedding_model = "nomic-embed-text",
+        bioc_version = as.character(BiocManager::version()),
         overwrite = FALSE,
         read_only = FALSE
     ) {
+        tag <- sprintf("biockb-%s", gsub("\\.", "-", bioc_version))
         if (read_only) {
             store <- ragnar::ragnar_store_connect(db_path, read_only = TRUE)
         } else {
@@ -51,14 +57,15 @@ BiocKB <- S7::new_class(
                 },
                 embedding_size = 768L,
                 overwrite = overwrite,
-                name = "BiocKB",
-                title = "BiocKB"
+                name = tag,
+                title = tag
             )
         }
         S7::new_object(
             S7::S7_object(),
             db_path = db_path,
             embedding_model = embedding_model,
+            bioc_version = bioc_version,
             read_only = read_only,
             store = store
         )
@@ -167,7 +174,8 @@ S7::method(format, BiocKB) <- function(x, ...) {
     c(
         sprintf("<BiocKB> [%s]", status),
         sprintf("  Path: %s", x@db_path),
-        sprintf("  Embedding model: %s", x@embedding_model)
+        sprintf("  Embedding model: %s", x@embedding_model),
+        sprintf("  Bioc version: %s", x@bioc_version)
     )
 }
 
@@ -182,6 +190,9 @@ S7::method(print, BiocKB) <- function(x, ...) {
 #' Returns the local file path to the BiocKB DuckDB database, downloading
 #' it from ExperimentHub on first use and caching it via BiocFileCache.
 #'
+#' @param bioc_version Character string. Bioconductor version to retrieve
+#'   (e.g., `"3.19"`, `"3.20"`). If `NULL` (the default), retrieves the
+#'   latest available version.
 #' @param check Logical. If `TRUE` (the default), verifies the file exists
 #'   and returns `NULL` with a message if it does not.
 #'
@@ -194,13 +205,21 @@ S7::method(print, BiocKB) <- function(x, ...) {
 #' }
 #'
 #' @export
-kb_path <- function(check = TRUE) {
+kb_path <- function(bioc_version = NULL, check = TRUE) {
     .check_package("ExperimentHub", "for downloading the knowledge base")
     .check_package("BiocFileCache", "for caching the knowledge base")
     eh <- ExperimentHub::ExperimentHub()
-    ## TODO: replace with actual ExperimentHub ID once resource is submitted
+    
+    # Construct ExperimentHub ID based on version
+    eh_id <- if (!is.null(bioc_version)) {
+        sprintf("EH_BIOCKB_%s", gsub("\\.", "_", bioc_version))
+    } else {
+        "EH_BIOCKB_LATEST"  # Default to latest if version not specified
+    }
+    
+    ## TODO: replace with actual ExperimentHub IDs once resources are submitted
     db_path <- tryCatch(
-        eh[["EH_BIOCKB_PLACEHOLDER"]],
+        eh[[eh_id]],
         error = function(e) NULL
     )
     if (check && (is.null(db_path) || !file.exists(db_path))) {

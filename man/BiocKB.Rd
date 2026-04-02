@@ -7,6 +7,7 @@
 BiocKB(
   db_path,
   embedding_model = "nomic-embed-text",
+  bioc_version = as.character(BiocManager::version()),
   overwrite = FALSE,
   read_only = FALSE
 )
@@ -16,6 +17,10 @@ BiocKB(
 
 \item{embedding_model}{Character string. Name of the Ollama embedding
 model to use when creating a new store. Default: \code{"nomic-embed-text"}.}
+
+\item{bioc_version}{Character string. Bioconductor version this KB is aligned with
+(e.g., \code{"3.19"}, \code{"3.20"}). Default: current Bioconductor version from \code{BiocManager::version()}.
+Stored as metadata for reproducibility.}
 
 \item{overwrite}{Logical. If \code{TRUE}, any existing store at \code{db_path} is
 replaced when creating. Default: \code{FALSE}.}
