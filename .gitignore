@@ -120,3 +120,6 @@ node_modules/
 
 # Personal files
 NOTES.md
+*duckdb
+biockb_resources
+all_files.rds
