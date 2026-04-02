@@ -1,120 +1,179 @@
-#' Create a BiocKB Store
+#' BiocKB S7 Class
 #'
-#' Initialises a new \pkg{ragnar} RAG store backed by a DuckDB
-#' database. Embeddings are generated locally by Ollama using the
-#' specified model.
+#' An S7 class representing a Bioconductor knowledge base backed by a
+#' DuckDB ragnar store. The constructor can either create a new store or
+#' connect to an existing one.
 #'
-#' An Ollama server must be reachable (it will be started automatically
-#' if the `ollama` executable is found on the `PATH`).
-#'
-#' @param db_path Character string. Path for the new DuckDB file.
+#' @param db_path Character string. Path to the DuckDB file.
 #' @param embedding_model Character string. Name of the Ollama embedding
-#'   model to use. Default: `"nomic-embed-text"`.
+#'   model to use when creating a new store. Default: `"nomic-embed-text"`.
 #' @param overwrite Logical. If `TRUE`, any existing store at `db_path` is
-#'   replaced. Default: `FALSE`.
+#'   replaced when creating. Default: `FALSE`.
+#' @param read_only Logical. If `TRUE`, connect to an existing store in
+#'   read-only mode. If `FALSE` (the default), create a new store.
 #'
-#' @return A ragnar store object (invisibly), as returned by
-#'   \code{\link[ragnar]{ragnar_store_create}}.
+#' @return A `BiocKB` S7 object.
 #'
-#' @seealso [biockb_store_insert()], [biockb_store_index()],
-#'   [biockb_store_connect()]
+#' @seealso [insert_bioc_kb()], [build_bioc_index()], [retrieve_bioc_kb()], [kb_path()]
 #'
 #' @examples
 #' \dontrun{
-#' store <- biockb_store_create(tempfile(fileext = ".duckdb"))
+#' # Create a new store
+#' kb <- BiocKB(tempfile(fileext = ".duckdb"))
+#'
+#' # Connect to an existing store
+#' kb <- BiocKB("biockb.duckdb", read_only = TRUE)
 #' }
 #'
 #' @export
-biockb_store_create <- function(db_path, embedding_model = "nomic-embed-text", overwrite = FALSE) {
-
-    # Check that ollama server is running 
-    .ollama_running() || .ollama_start()
-
-    ragnar::ragnar_store_create(
+BiocKB <- S7::new_class(
+    "BiocKB",
+    properties = list(
+        db_path = S7::class_character,
+        embedding_model = S7::class_character,
+        read_only = S7::class_logical,
+        store = S7::class_any
+    ),
+    constructor = function(
         db_path,
-        embed = function(x) {ragnar::embed_ollama(x, model = embedding_model)}, 
-        embedding_size = 768L,
-        overwrite = overwrite, 
-        name = "BiocKB", 
-        title = "BiocKB"
-    )
-}
+        embedding_model = "nomic-embed-text",
+        overwrite = FALSE,
+        read_only = FALSE
+    ) {
+        if (read_only) {
+            store <- ragnar::ragnar_store_connect(db_path, read_only = TRUE)
+        } else {
+            .ollama_running() || .ollama_start()
+            store <- ragnar::ragnar_store_create(
+                db_path,
+                embed = function(x) {
+                    ragnar::embed_ollama(x, model = embedding_model)
+                },
+                embedding_size = 768L,
+                overwrite = overwrite,
+                name = "BiocKB",
+                title = "BiocKB"
+            )
+        }
+        S7::new_object(
+            S7::S7_object(),
+            db_path = db_path,
+            embedding_model = embedding_model,
+            read_only = read_only,
+            store = store
+        )
+    }
+)
 
 #' Insert Chunks into a BiocKB Store
 #'
-#' Embeds and inserts pre-chunked documents into an existing ragnar store.
-#' A progress message is printed for each batch showing the origin, number
-#' of chunks, and elapsed time.
+#' Embeds and inserts pre-chunked documents into a BiocKB store.
+#' A progress message is printed showing the origin, number of chunks,
+#' and elapsed time.
 #'
-#' @param store A ragnar store object created by
-#'   [biockb_store_create()] or opened by [biockb_store_connect()].
+#' @param kb A `BiocKB` object.
 #' @param chunks A data frame of chunks as returned by [chunk_bioc_file()].
 #'
-#' @return `TRUE` invisibly on success, or `NULL` if insertion failed
-#'   (with a warning).
+#' @return The `BiocKB` object invisibly on success, or `NULL` if insertion
+#'   failed (with a warning).
 #'
-#' @seealso [biockb_store_create()], [chunk_bioc_file()]
+#' @seealso [BiocKB], [chunk_bioc_file()]
+#'
+#' @examples
+#' \dontrun{
+#' kb <- BiocKB(tempfile(fileext = ".duckdb"))
+#' chunks <- chunk_bioc_file("path/to/file.R")
+#' insert(kb, chunks)
+#' }
 #'
 #' @export
-biockb_store_insert <- function(store, chunks) {
+insert_bioc_kb <- S7::new_generic("insert_bioc_kb", "kb")
 
-    # Check that ollama server is running 
+S7::method(insert_bioc_kb, BiocKB) <- function(kb, chunks) {
     .ollama_running() || .ollama_start()
-
-    # logging time 
     start_time <- Sys.time()
-
     tryCatch(
-        {
-            ragnar::ragnar_store_insert(store, chunks)
-        },
+        ragnar::ragnar_store_insert(kb@store, chunks),
         error = function(e) {
             warning(sprintf("Error inserting chunks into store: %s", e$message))
             return(NULL)
         }
     )
-
-    # log time taken for insertion
     end_time <- Sys.time()
-    time_taken <- end_time - start_time
-    # log as "ORIGIN | NUM_CHUNKS | TIME_TAKEN"
-    message(sprintf("%s | %d chunks | %.2fs", chunks@document@origin, nrow(chunks), as.numeric(time_taken, units = "secs")))
-
-    return(invisible(TRUE))
+    time_taken <- as.numeric(end_time - start_time, units = "secs")
+    message(sprintf(
+        "%s | %d chunks | %.2fs",
+        chunks@document@origin, nrow(chunks), time_taken
+    ))
+    invisible(kb)
 }
 
 #' Build the Search Index of a BiocKB Store
 #'
 #' Finalises the store by building the vector-similarity search index.
 #' This should be called after all chunks have been inserted with
-#' [biockb_store_insert()].
+#' [insert_bioc_kb()].
 #'
-#' @param store A ragnar store object.
+#' @param kb A `BiocKB` object.
 #'
-#' @return The result of \code{\link[ragnar]{ragnar_store_build_index}}
-#'   (invisibly).
+#' @return The `BiocKB` object (invisibly).
 #'
-#' @seealso [biockb_store_create()], [biockb_store_insert()]
+#' @seealso [BiocKB], [insert_bioc_kb()]
+#'
+#' @examples
+#' \dontrun{
+#' kb <- BiocKB(tempfile(fileext = ".duckdb"))
+#' # ... insert chunks ...
+#' build_bioc_index(kb)
+#' }
 #'
 #' @export
-biockb_store_index <- function(store) {
+build_bioc_index <- S7::new_generic("build_bioc_index", "kb")
+
+S7::method(build_bioc_index, BiocKB) <- function(kb) {
     .ollama_running() || .ollama_start()
-    ragnar::ragnar_store_build_index(store)
+    ragnar::ragnar_store_build_index(kb@store)
+    invisible(kb)
 }
 
-#' Connect to an Existing BiocKB Store
+#' Retrieve Relevant Chunks from a BiocKB Store
 #'
-#' Opens a previously created ragnar store for querying.
+#' Performs semantic search over the knowledge base to find chunks
+#' relevant to a query.
 #'
-#' @param db_path Character string. Path to the DuckDB file.
+#' @param kb A `BiocKB` object.
+#' @param query Character string. The search query.
+#' @param top_k Integer. Number of results to return. Default: 5.
 #'
-#' @return A ragnar store connection object.
+#' @return A data frame of matching chunks with relevance scores.
 #'
-#' @seealso [biockb_store_create()]
+#' @seealso [BiocKB], [build_bioc_index()]
+#'
+#' @examples
+#' \dontrun{
+#' kb <- BiocKB("biockb.duckdb", read_only = TRUE)
+#' results <- retrieve_bioc_kb(kb, "DESeq2 differential expression")
+#' }
 #'
 #' @export
-biockb_store_connect <- function(db_path) {
-    ragnar::ragnar_store_connect(db_path, read_only = TRUE)
+retrieve_bioc_kb <- S7::new_generic("retrieve_bioc_kb", "kb")
+
+S7::method(retrieve_bioc_kb, BiocKB) <- function(kb, query, top_k = 5L) {
+    ragnar::ragnar_retrieve(kb@store, query, top_k = as.integer(top_k))
+}
+
+S7::method(format, BiocKB) <- function(x, ...) {
+    status <- if (x@read_only) "connected (read-only)" else "writable"
+    c(
+        sprintf("<BiocKB> [%s]", status),
+        sprintf("  Path: %s", x@db_path),
+        sprintf("  Embedding model: %s", x@embedding_model)
+    )
+}
+
+S7::method(print, BiocKB) <- function(x, ...) {
+    cat(format(x, ...), sep = "\n")
+    invisible(x)
 }
 
 

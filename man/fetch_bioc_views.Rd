@@ -2,39 +2,56 @@
 % Please edit documentation in R/fetch_views.R
 \name{fetch_bioc_views}
 \alias{fetch_bioc_views}
-\title{Fetch and Parse biocViews from the Bioconductor VIEWS File}
+\title{Ingest biocViews Ontology and Package Relationships into BiocKB}
 \usage{
 fetch_bioc_views(
+  base_dir,
   version = NULL,
-  type = c("bioc", "data/annotation", "data/experiment")
+  type = c("bioc", "data/annotation", "data/experiment"),
+  force = FALSE,
+  BPPARAM = BiocParallel::bpparam()
 )
 }
 \arguments{
-\item{version}{Character string. Bioconductor version (e.g., \code{"3.21"}).
-Default: current devel version obtained from BiocManager.}
+\item{base_dir}{Character string. Directory where the generated Markdown
+files will be saved.}
 
-\item{type}{Character string. Repository type: \code{"bioc"}, \code{"data/annotation"},
-or \code{"data/experiment"}. Default: \code{"bioc"}.}
+\item{version}{Character string. Bioconductor version. Passed to
+\code{\link[=fetch_bioc_views]{fetch_bioc_views()}}.}
+
+\item{type}{Character string. Repository type. Passed to
+\code{\link[=fetch_bioc_views]{fetch_bioc_views()}}.}
+
+\item{force}{Logical. If \code{TRUE}, skip interactive confirmation.
+Default: \code{FALSE}.}
+
+\item{BPPARAM}{A \link[BiocParallel:BiocParallelParam-class]{BiocParallel::BiocParallelParam} instance controlling
+parallelisation. Defaults to \code{\link[BiocParallel:register]{BiocParallel::bpparam()}} (the registered
+default). Use \code{\link[BiocParallel:SerialParam-class]{BiocParallel::SerialParam()}} to disable parallelism.}
 }
 \value{
-A data frame with one row per package and columns including
-\code{Package}, \code{Version}, \code{Title}, \code{Description}, \code{Depends}, \code{Imports},
-\code{Suggests}, \code{biocViews}, \code{Author}, \code{Maintainer}, and others present
-in the VIEWS file.
+A character vector of paths to the created Markdown files
+(invisibly).
 }
 \description{
-Downloads the \code{VIEWS} file for a given Bioconductor release and
-parses it into a structured data frame containing package metadata,
-dependency relationships, and biocViews ontology terms.
+Fetches the \code{VIEWS} file and creates structured knowledge base chunks
+for each package's biocViews classification and dependency graph. This
+captures the ontology relationships (which biocViews each package belongs
+to) and inter-package dependency links.
 }
 \details{
-The \code{VIEWS} file is a DCF-formatted file available at
-\verb{https://bioconductor.org/packages/<version>/bioc/VIEWS}.
+Two types of documents are generated:
+\describe{
+\item{Package metadata}{One file per package containing its
+biocViews terms, dependencies, title, and description.}
+\item{biocViews index}{One file per biocViews term listing all
+packages belonging to that term.}
+}
 }
 \examples{
 \dontrun{
-views <- fetch_bioc_views("3.21")
-head(views[, c("Package", "biocViews")])
+files <- fetch_bioc_views(tempdir(), version = "3.21")
+head(files)
 }
 
 }

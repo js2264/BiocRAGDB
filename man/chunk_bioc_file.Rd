@@ -4,7 +4,7 @@
 \alias{chunk_bioc_file}
 \title{Chunk a Bioconductor Package File into Markdown Segments}
 \usage{
-chunk_bioc_file(file_path)
+chunk_bioc_file(file_path, base_path = NULL)
 }
 \arguments{
 \item{file_path}{Character string. Path to the file to chunk.}

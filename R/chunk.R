@@ -29,11 +29,14 @@
 #' }
 #'
 #' @export
-chunk_bioc_file <- function(file_path) {
+chunk_bioc_file <- function(file_path, base_path = NULL) {
 
     ext <- tolower(tools::file_ext(file_path))
     bname <- basename(file_path)
     origin <- file_path
+    if (!is.null(base_path)) {
+        origin <- sub(paste0("^", gsub("([.\\+^$|(){}\\[\\]\\\\])", "\\\\\\1", base_path), "/?"), "", origin)
+    }
 
     ## ── DESCRIPTION / NAMESPACE: single chunk ──
     if (bname %in% c("DESCRIPTION", "NAMESPACE")) {

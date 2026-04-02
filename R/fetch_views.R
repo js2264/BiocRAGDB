@@ -24,7 +24,8 @@
 #' }
 #'
 #' @export
-fetch_bioc_views <- function(
+.fetch_views <- function(
+    base_dir, 
     version = NULL,
     type = c("bioc", "data/annotation", "data/experiment")
 ) {
@@ -99,12 +100,12 @@ fetch_bioc_views <- function(
 #'
 #' @examples
 #' \dontrun{
-#' files <- ingest_bioc_views(tempdir(), version = "3.21")
+#' files <- fetch_bioc_views(tempdir(), version = "3.21")
 #' head(files)
 #' }
 #'
 #' @export
-ingest_bioc_views <- function(
+fetch_bioc_views <- function(
     base_dir,
     version = NULL,
     type = c("bioc", "data/annotation", "data/experiment"),
@@ -123,7 +124,7 @@ ingest_bioc_views <- function(
         }
     }
 
-    views <- fetch_bioc_views(version = version, type = type)
+    views <- .fetch_views(version = version, type = type)
     pkg_dir <- file.path(base_dir, "all_files", "biocviews", "packages")
     idx_dir <- file.path(base_dir, "all_files", "biocviews", "terms")
     dir.create(pkg_dir, showWarnings = FALSE, recursive = TRUE)

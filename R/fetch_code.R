@@ -20,6 +20,7 @@
 #'   Default: `FALSE`.
 #'
 #' @return A character vector of paths to the collected files (invisibly).
+#' @importFrom BiocPkgTools biocPkgList
 #'
 #' @examples
 #' \dontrun{
@@ -57,7 +58,6 @@ fetch_pkgs_resources <- function(
     
     # If no specific packages are provided, fetch the list of all Bioconductor packages
     if (is.null(pkgs)) {
-        .check_package("BiocPkgTools", "for listing Bioconductor packages")
         pkg_tbl <- BiocPkgTools::biocPkgList()
         pkgs <- pkg_tbl$Package
     }

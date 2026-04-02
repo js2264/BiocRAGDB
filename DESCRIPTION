@@ -24,12 +24,13 @@ Imports:
     BiocFileCache,
     BiocManager,
     BiocParallel,
+    BiocPkgTools,
+    ragnar,
+    S7,
     tools,
     utils
 Suggests:
-    ragnar,
     ellmer (>= 0.3.0),
-    BiocPkgTools,
     httr2,
     jsonlite,
     mockery,

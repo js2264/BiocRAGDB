@@ -8,7 +8,8 @@ fetch_bioc_website(
   base_dir,
   branch = "devel",
   remove_clone = FALSE,
-  force = FALSE
+  force = FALSE,
+  BPPARAM = BiocParallel::bpparam()
 )
 }
 \arguments{

@@ -2,7 +2,6 @@
 % Please edit documentation in R/BiocKB-package.R
 \docType{package}
 \name{BiocKB-package}
-\alias{BiocKB}
 \alias{BiocKB-package}
 \title{BiocKB: Bioconductor Knowledge Base for AI-Assisted Analysis}
 \description{

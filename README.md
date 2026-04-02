@@ -11,58 +11,81 @@ biocViews metadata for semantic retrieval.
 BiocManager::install("BiocKB")
 ```
 
-## Quick Start
+## Quick start
 
 ```r
 library(BiocKB)
 
-## Connect to a pre-built knowledge base (downloads from ExperimentHub if needed)
-store <- biockb_store_connect(kb_path())
+## Connect to the pre-built knowledge base (downloads from ExperimentHub if needed)
+kb <- BiocKB(kb_path(), read_only = TRUE)
 
 ## Retrieve relevant chunks
-ragnar::ragnar_retrieve(store, "differential expression with DESeq2", top_k = 5)
+retrieve_bioc_kb(kb, "differential expression with DESeq2", top_k = 5)
 ```
 
-## Building a Knowledge Base from Scratch
+## Building a knowledge base from scratch
+
+The typical workflow follows: **fetch → chunk → insert → index → retrieve**.
+
+### 1. Fetch Bioconductor resources
 
 ```r
 library(BiocKB)
 
-base_dir <- tempdir()
+base_dir <- "biockb_resources"
 
-## 1. Fetch sources
-files <- fetch_pkgs_resources(base_dir, pkgs = c("DESeq2", "scran"))
-fetch_bioc_website(base_dir)
-fetch_support_posts(base_dir, max_pages = 10)
-ingest_bioc_views(base_dir)
+## Clone and collect Bioconductor package sources (R/, vignettes, DESCRIPTION, NAMESPACE)
+pkgs_files <- fetch_pkgs_resources(base_dir, pkgs = c("DESeq2", "scran"))
 
-## 2. Chunk
-chunks <- lapply(files, chunk_bioc_file)
+## Clone bioconductor.org website content
+pages <- fetch_bioc_website(base_dir)
 
-## 3. Create, insert, and index the store
-db_path <- file.path(base_dir, "BiocKB.duckdb")
-store <- biockb_store_create(db_path)
-lapply(chunks, biockb_store_insert, store = store)
-biockb_store_index(store)
+## Download biocViews ontology + per-package metadata
+views <- fetch_bioc_views(base_dir)
+
+## Clone the Package Developer book
+contribs <- fetch_bioc_contributions(base_dir)
+
+## Scrape support.bioconductor.org Q&A posts
+posts <- fetch_support_posts(base_dir, max_pages = 10)
+
+all_files <- c(pkgs_files, unlist(pages), views, unlist(contribs), posts)
+```
+
+### 2. Chunk and insert into the knowledge base
+
+```r
+## AST-aware chunking of all collected files
+chunks <- lapply(all_files, chunk_bioc_file, base_path = base_dir)
+
+## Create a new knowledge base (requires Ollama for embeddings)
+kb <- BiocKB("biockb.duckdb", overwrite = TRUE)
+
+## Insert chunks and build the search index
+purrr::map(chunks, insert_bioc_kb, kb = kb)
+build_bioc_index(kb)
+```
+
+### 3. Retrieve
+
+```r
+## Connect to the store for querying
+kb <- BiocKB("biockb.duckdb", read_only = TRUE)
+retrieve_bioc_kb(kb, "How to perform differential expression analysis")
+retrieve_bioc_kb(kb, "How to submit a package to Bioconductor")
 ```
 
 ## Key Functions
 
 | Function | Description |
 |---|---|
-| `biockb_store_create()` | Create a new DuckDB ragnar store |
-| `biockb_store_insert()` | Insert chunks into a store |
-| `biockb_store_index()` | Build the embedding index |
-| `biockb_store_connect()` | Connect to an existing store |
-| `chunk_bioc_file()` | AST-aware chunking of R, Rmd, Rnw files |
+| `BiocKB()` | S7 class: create or connect to a DuckDB ragnar store |
+| `insert_bioc_kb()` | Embed and insert chunks into a BiocKB store |
+| `build_bioc_index()` | Build the vector-similarity search index |
+| `retrieve_bioc_kb()` | Semantic search over the knowledge base |
+| `kb_path()` | Locate or download the pre-built knowledge base |
+| `chunk_bioc_file()` | AST-aware chunking of R, Rmd, Rnw, DESCRIPTION files |
 | `fetch_pkgs_resources()` | Clone and collect Bioconductor package sources |
 | `fetch_bioc_website()` | Clone bioconductor.org content |
-| `fetch_support_posts()` | Scrape support.bioconductor.org Q&A |
-| `fetch_bioc_views()` | Fetch biocViews ontology |
-| `ingest_bioc_views()` | Ingest biocViews + package metadata |
-| `kb_path()` | Locate or download the pre-built knowledge base |
-
-## Part of BiocAI
-
-BiocKB is part of the [BiocAI](https://github.com/BiocAI/BiocAI) project —
-a modular AI stack for the Bioconductor ecosystem.
+| `fetch_bioc_views()` | Fetch biocViews ontology + per-package metadata |
+| `fetch_bioc_contributions()` | Clone Bioconductor Package Developer book |
